@@ -18,9 +18,7 @@ setInterval(() => {
 }, 1000);
 
 function shareRoomsInfo() {
-  io.emit(ACTIONS.SHARE_ROOMS, {
-    rooms: getClientRooms(),
-  });
+  io.emit(ACTIONS.SHARE_ROOMS, getClientRooms());
 }
 
 io.on('connection', (socket) => {
