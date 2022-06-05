@@ -11,6 +11,7 @@ const io = require('socket.io')(server, {
 });
 
 const ACTIONS = require('./actions.js');
+const PORT = process.env.PORT || 5000;
 
 function getClientRooms() {
   const { rooms } = io.sockets.adapter;
@@ -133,4 +134,8 @@ app.use(express.static(publicPath));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(publicPath, 'index.html'));
+});
+
+server.listen(PORT, () => {
+  console.log('Server Started!');
 });
