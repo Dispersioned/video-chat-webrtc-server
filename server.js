@@ -12,13 +12,25 @@ function getClientRooms() {
   return Array.from(rooms.keys());
 }
 
-setInterval(() => {
-  const { rooms } = io.sockets.adapter;
-  console.log(Array.from(rooms.keys()));
-}, 1000);
-
 function shareRoomsInfo() {
   io.emit(ACTIONS.SHARE_ROOMS, getClientRooms());
+}
+
+const roomsUsersIds = {};
+
+function handleJoinRoom(roomID, socketID, userID) {
+  if (!roomsUsersIds[roomID]) roomsUsersIds[roomID] = {}; // create new rooms
+  if (!roomsUsersIds[roomID][socketID]) roomsUsersIds[roomID][socketID] = userID; // add new users
+  console.log('roomsUsersIds ', roomsUsersIds);
+}
+
+function handleLeaveRoom(roomID, socketID) {
+  if (!roomsUsersIds[roomID][socketID]) {
+    console.log(`cant leave room. socketID ${socketID} doesn't exist in roomID ${roomID}`);
+  } else delete roomsUsersIds[roomID][socketID];
+
+  if (Object.keys(roomsUsersIds[roomID])) delete roomsUsersIds[roomID]; // delete empty room
+  console.log('roomsUsersIds ', roomsUsersIds);
 }
 
 io.on('connection', (socket) => {
@@ -28,14 +40,13 @@ io.on('connection', (socket) => {
     shareRoomsInfo();
   });
 
-  socket.on(ACTIONS.JOIN, (config) => {
-    const { room: roomID, userID } = config;
+  socket.on(ACTIONS.JOIN, ({ room: roomID, userID }) => {
     const { rooms: joinedRooms } = socket;
-
-    console.log(userID);
 
     // is this check really necessary?
     if (Array.from(joinedRooms).includes(roomID)) return console.warn(`Already joined to ${roomID}`);
+
+    handleJoinRoom(roomID, socket.id, userID);
 
     const clients = Array.from(io.sockets.adapter.rooms.get(roomID) || []);
 
@@ -48,7 +59,7 @@ io.on('connection', (socket) => {
 
       socket.emit(ACTIONS.ADD_PEER, {
         peerID: clientID,
-        peerUserID: userID,
+        peerUserID: roomsUsersIds[roomID][clientID],
         createOffer: true,
       });
     });
@@ -62,8 +73,8 @@ io.on('connection', (socket) => {
 
     Array.from(rooms).forEach((roomID) => {
       if (socket.id === roomID) return; // don't leave from myself
+      handleLeaveRoom(roomID, socket.id);
       const clients = Array.from(io.sockets.adapter.rooms.get(roomID) || []);
-      console.log('room', roomID, ' clients: ', clients);
 
       clients.forEach((clientID) => {
         io.to(clientID).emit(ACTIONS.REMOVE_PEER, {
