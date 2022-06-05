@@ -29,7 +29,7 @@ function handleLeaveRoom(roomID, socketID) {
     console.log(`cant leave room. socketID ${socketID} doesn't exist in roomID ${roomID}`);
   } else delete roomsUsersIds[roomID][socketID];
 
-  if (Object.keys(roomsUsersIds[roomID])) delete roomsUsersIds[roomID]; // delete empty room
+  if (Object.keys(roomsUsersIds[roomID]).length === 0) delete roomsUsersIds[roomID]; // delete empty room
   console.log('roomsUsersIds ', roomsUsersIds);
 }
 
