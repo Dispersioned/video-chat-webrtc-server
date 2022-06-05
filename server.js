@@ -24,13 +24,17 @@ function handleJoinRoom(roomID, socketID, userID) {
   console.log('roomsUsersIds ', roomsUsersIds);
 }
 
-function handleLeaveRoom(roomID, socketID) {
+function leaveRoom(roomID, socketID) {
   if (!roomsUsersIds[roomID][socketID]) {
     console.log(`cant leave room. socketID ${socketID} doesn't exist in roomID ${roomID}`);
   } else delete roomsUsersIds[roomID][socketID];
 
   if (Object.keys(roomsUsersIds[roomID]).length === 0) delete roomsUsersIds[roomID]; // delete empty room
   console.log('roomsUsersIds ', roomsUsersIds);
+}
+
+function leaveAllRooms(socketID) {
+  for (const roomID of Object.keys(roomsUsersIds)) leaveRoom(roomID, socketID);
 }
 
 io.on('connection', (socket) => {
@@ -68,12 +72,16 @@ io.on('connection', (socket) => {
     shareRoomsInfo();
   });
 
+  socket.on('disconnect', () => {
+    leaveAllRooms(socket.id);
+  });
+
   socket.on(ACTIONS.LEAVE, () => {
     const { rooms } = socket;
 
     Array.from(rooms).forEach((roomID) => {
       if (socket.id === roomID) return; // don't leave from myself
-      handleLeaveRoom(roomID, socket.id);
+      leaveRoom(roomID, socket.id);
       const clients = Array.from(io.sockets.adapter.rooms.get(roomID) || []);
 
       clients.forEach((clientID) => {
