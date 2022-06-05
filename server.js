@@ -16,20 +16,25 @@ function shareRoomsInfo() {
   io.emit(ACTIONS.SHARE_ROOMS, getClientRooms());
 }
 
+// cache storing mapping socketID => userID (UI id from frontend / backend)
 const roomsUsersIds = {};
 
 function handleJoinRoom(roomID, socketID, userID) {
-  if (!roomsUsersIds[roomID]) roomsUsersIds[roomID] = {}; // create new rooms
-  if (!roomsUsersIds[roomID][socketID]) roomsUsersIds[roomID][socketID] = userID; // add new users
+  // create new rooms
+  if (!roomsUsersIds[roomID]) roomsUsersIds[roomID] = {};
+  // add new users
+  if (!roomsUsersIds[roomID][socketID]) roomsUsersIds[roomID][socketID] = userID;
   console.log('roomsUsersIds ', roomsUsersIds);
 }
 
 function leaveRoom(roomID, socketID) {
   if (!roomsUsersIds[roomID][socketID]) {
-    console.log(`cant leave room. socketID ${socketID} doesn't exist in roomID ${roomID}`);
-  } else delete roomsUsersIds[roomID][socketID];
-
-  if (Object.keys(roomsUsersIds[roomID]).length === 0) delete roomsUsersIds[roomID]; // delete empty room
+    console.warn(`cant leave room. socketID ${socketID} doesn't exist in roomID ${roomID}`);
+    return;
+  }
+  delete roomsUsersIds[roomID][socketID];
+  // delete empty room
+  if (Object.keys(roomsUsersIds[roomID]).length === 0) delete roomsUsersIds[roomID];
   console.log('roomsUsersIds ', roomsUsersIds);
 }
 
@@ -46,8 +51,6 @@ io.on('connection', (socket) => {
 
   socket.on(ACTIONS.JOIN, ({ room: roomID, userID }) => {
     const { rooms: joinedRooms } = socket;
-
-    // is this check really necessary?
     if (Array.from(joinedRooms).includes(roomID)) return console.warn(`Already joined to ${roomID}`);
 
     handleJoinRoom(roomID, socket.id, userID);
