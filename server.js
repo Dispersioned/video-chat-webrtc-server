@@ -2,7 +2,12 @@ const path = require('path');
 const express = require('express');
 const app = express();
 const server = require('http').createServer(app);
-const io = require('socket.io')(server);
+const io = require('socket.io')(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL,
+    methods: ['GET', 'POST'],
+  },
+});
 
 const ACTIONS = require('./actions.js');
 const PORT = process.env.PORT || 5000;
