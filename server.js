@@ -12,13 +12,34 @@ function getClientRooms() {
   return Array.from(rooms.keys());
 }
 
-setInterval(() => {
-  const { rooms } = io.sockets.adapter;
-  console.log(Array.from(rooms.keys()));
-}, 1000);
-
 function shareRoomsInfo() {
   io.emit(ACTIONS.SHARE_ROOMS, getClientRooms());
+}
+
+// cache storing mapping socketID => userID (UI id from frontend / backend)
+const roomsUsersIds = {};
+
+function handleJoinRoom(roomID, socketID, userID) {
+  // create new rooms
+  if (!roomsUsersIds[roomID]) roomsUsersIds[roomID] = {};
+  // add new users
+  if (!roomsUsersIds[roomID][socketID]) roomsUsersIds[roomID][socketID] = userID;
+  console.log('roomsUsersIds ', roomsUsersIds);
+}
+
+function leaveRoom(roomID, socketID) {
+  if (!roomsUsersIds[roomID][socketID]) {
+    console.warn(`cant leave room. socketID ${socketID} doesn't exist in roomID ${roomID}`);
+    return;
+  }
+  delete roomsUsersIds[roomID][socketID];
+  // delete empty room
+  if (Object.keys(roomsUsersIds[roomID]).length === 0) delete roomsUsersIds[roomID];
+  console.log('roomsUsersIds ', roomsUsersIds);
+}
+
+function leaveAllRooms(socketID) {
+  for (const roomID of Object.keys(roomsUsersIds)) leaveRoom(roomID, socketID);
 }
 
 io.on('connection', (socket) => {
@@ -28,14 +49,11 @@ io.on('connection', (socket) => {
     shareRoomsInfo();
   });
 
-  socket.on(ACTIONS.JOIN, (config) => {
-    const { room: roomID, userID } = config;
+  socket.on(ACTIONS.JOIN, ({ room: roomID, userID }) => {
     const { rooms: joinedRooms } = socket;
-
-    console.log(userID);
-
-    // is this check really necessary?
     if (Array.from(joinedRooms).includes(roomID)) return console.warn(`Already joined to ${roomID}`);
+
+    handleJoinRoom(roomID, socket.id, userID);
 
     const clients = Array.from(io.sockets.adapter.rooms.get(roomID) || []);
 
@@ -48,7 +66,7 @@ io.on('connection', (socket) => {
 
       socket.emit(ACTIONS.ADD_PEER, {
         peerID: clientID,
-        peerUserID: userID,
+        peerUserID: roomsUsersIds[roomID][clientID],
         createOffer: true,
       });
     });
@@ -57,13 +75,17 @@ io.on('connection', (socket) => {
     shareRoomsInfo();
   });
 
+  socket.on('disconnect', () => {
+    leaveAllRooms(socket.id);
+  });
+
   socket.on(ACTIONS.LEAVE, () => {
     const { rooms } = socket;
 
     Array.from(rooms).forEach((roomID) => {
       if (socket.id === roomID) return; // don't leave from myself
+      leaveRoom(roomID, socket.id);
       const clients = Array.from(io.sockets.adapter.rooms.get(roomID) || []);
-      console.log('room', roomID, ' clients: ', clients);
 
       clients.forEach((clientID) => {
         io.to(clientID).emit(ACTIONS.REMOVE_PEER, {
