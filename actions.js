@@ -9,6 +9,7 @@ const ACTIONS = {
   ICE_CANDIDATE: 'ice-candidate',
   SESSION_DESCRIPTION: 'session-description',
   TOGGLE_VIDEO: 'toggle-video',
+  TOGGLE_AUDIO: 'toggle-audio',
 };
 
 module.exports = ACTIONS;
