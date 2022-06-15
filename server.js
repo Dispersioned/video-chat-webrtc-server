@@ -126,6 +126,10 @@ io.on('connection', (socket) => {
   socket.on(ACTIONS.TOGGLE_VIDEO, (setTo) => {
     socket.broadcast.emit(ACTIONS.TOGGLE_VIDEO, socket.id, setTo);
   });
+
+  socket.on(ACTIONS.TOGGLE_AUDIO, (setTo) => {
+    socket.broadcast.emit(ACTIONS.TOGGLE_AUDIO, socket.id, setTo);
+  });
 });
 
 const publicPath = path.join(__dirname, 'build');
